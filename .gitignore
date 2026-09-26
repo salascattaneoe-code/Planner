@@ -1,0 +1,21 @@
+# Dependencias de Node.js (el otro desarrollador las descargará con 'npm install')
+node_modules/
+
+# Archivos de la base de datos (protege tus usuarios, tareas y materias)
+*.db
+*.sqlite
+*.sqlite3
+study_tracker.db
+
+# Archivos de entorno y credenciales (donde irán las claves de Google)
+.env
+credentials.json
+token.json
+
+# Archivos de registro de errores
+npm-debug.log*
+yarn-error.log*
+
+# Archivos ocultos del sistema operativo (Mac/Windows)
+.DS_Store
+Thumbs.db
