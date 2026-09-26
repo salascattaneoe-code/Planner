@@ -1,0 +1,25 @@
+{
+  "name": "planner",
+  "version": "1.0.0",
+  "description": "Aplicación web Full-Stack para gestionar tareas académicas y sincronizarlas con Google Calendar.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "study",
+    "tracker",
+    "calendar",
+    "planner",
+    "nodejs"
+  ],
+  "author": "Tu Nombre",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "sqlite3": "^5.1.6"
+  }
+}
