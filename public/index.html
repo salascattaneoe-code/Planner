@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Study Tracker Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; height: 100vh; }
+        .hidden { display: none !important; }
+        .auth-container { margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        .auth-container input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #4a90e2; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; width: 100%; margin-bottom: 10px;}
+        button:hover { background: #357abd; }
+        .dashboard { display: flex; width: 100%; }
+        .sidebar { width: 250px; background: #2c3e50; color: white; padding: 20px; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        .flex-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Login / Registro -->
+    <div id="auth-screen" class="auth-container">
+        <h2>Study Tracker</h2>
+        <input type="text" id="username" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button onclick="login()">Iniciar Sesión</button>
+        <button onclick="register()" style="background: #27ae60;">Crear Cuenta</button>
+        <p id="auth-msg" style="color: red; font-size: 0.9em;"></p>
+    </div>
+
+    <!-- Pantalla Principal (Dashboard) -->
+    <div id="dashboard-screen" class="dashboard hidden">
+        <div class="sidebar">
+            <h2>Mi Tracker</h2>
+            <button onclick="syncGoogle()" style="background: #f1c40f; color: #333;">📅 Sync Google Calendar</button>
+            <hr style="border-color: #34495e; margin: 20px 0;">
+            <h3>Gestor de Materias</h3>
+            <div class="flex-row">
+                <input type="text" id="new-subject" placeholder="Nueva clase..." style="width: 70%; padding: 5px;">
+                <button onclick="addSubject()" style="width: 30%; padding: 5px;">Añadir</button>
+            </div>
+            <ul id="subject-list" style="list-style: none; padding: 0; font-size: 0.9em; line-height: 1.8;"></ul>
+            <br><br>
+            <button onclick="logout()" style="background: #e74c3c;">Cerrar Sesión</button>
+        </div>
+        
+        <div class="main-content">
+            <h1>Panel de Tareas</h1>
+            
+            <div class="card">
+                <h3>Agregar Nueva Tarea Manual</h3>
+                <div class="flex-row">
+                    <input type="text" id="task-title" placeholder="Título de la tarea">
+                    <select id="task-subject"></select>
+                    <input type="date" id="task-date">
+                    <button onclick="addTask()">Guardar</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarea</th>
+                            <th>Materia</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body">
+                        <!-- Tareas inyectadas por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funciones de Autenticación
+        async function register() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const res = await fetch('/api/register', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username: u, password: p}) });
+            const data = await res.json();
+            document.getElementById('auth-msg').innerText = data.error || data.message;
+        }
+
+        async function login() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const res = await fetch('/api/login', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username: u, password: p}) });
+            if (res.ok) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('dashboard-screen').classList.remove('hidden');
+                loadDashboardData();
+            } else {
+                document.getElementById('auth-msg').innerText = "Usuario o contraseña incorrectos";
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.reload();
+        }
+
+        // Cargar Datos del Usuario
+        async function loadDashboardData() {
+            loadSubjects();
+            loadTasks();
+        }
+
+        async function loadSubjects() {
+            const res = await fetch('/api/subjects');
+            if (!res.ok) return;
+            const subjects = await res.json();
+            
+            const list = document.getElementById('subject-list');
+            const select = document.getElementById('task-subject');
+            list.innerHTML = '';
+            select.innerHTML = '';
+            
+            subjects.forEach(sub => {
+                list.innerHTML += `<li>📘 ${sub.name}</li>`;
+                select.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
+            });
+        }
+
+        async function addSubject() {
+            const name = document.getElementById('new-subject').value;
+            if(!name) return;
+            await fetch('/api/subjects', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            document.getElementById('new-subject').value = '';
+            loadSubjects(); // Recargar lista
+        }
+
+        async function loadTasks() {
+            const res = await fetch('/api/tasks');
+            const tasks = await res.json();
+            const tbody = document.getElementById('task-table-body');
+            tbody.innerHTML = '';
+            tasks.forEach(t => {
+                tbody.innerHTML += `<tr>
+                    <td>${t.title}</td>
+                    <td>${t.subject_name || 'Sin asignar'}</td>
+                    <td>${t.status || 'Pendiente'}</td>
+                    <td>${t.due_date || '-'}</td>
+                </tr>`;
+            });
+        }
+
+        async function addTask() {
+            const title = document.getElementById('task-title').value;
+            const subject_id = document.getElementById('task-subject').value;
+            const due_date = document.getElementById('task-date').value;
+            if(!title) return;
+            
+            await fetch('/api/tasks', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title, subject_id, status: 'Sin Empezar', due_date, priority: 'Medio'}) });
+            loadTasks();
+        }
+
+        async function syncGoogle() {
+            alert("Para conectar de verdad con Google Calendar, necesitas registrar una App en Google Cloud Console y obtener un archivo credentials.json. ¡El servidor ya tiene la ruta '/api/sync-calendar' preparada para inyectar esa lógica!");
+        }
+    </script>
+</body>
+</html>
